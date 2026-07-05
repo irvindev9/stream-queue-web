@@ -1,0 +1,5 @@
+config.php
+queue.sqlite
+queue.sqlite-journal
+queue.sqlite-wal
+queue.sqlite-shm
