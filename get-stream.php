@@ -44,8 +44,40 @@ try {
     $db = new PDO('sqlite:' . DB_FILE);
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+    // Asegurar existencia de tabla clients_status
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS clients_status (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_name TEXT NOT NULL UNIQUE,
+            active_count INTEGER NOT NULL DEFAULT 0,
+            waiting_count INTEGER NOT NULL DEFAULT 0,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    ");
+
+    // Procesar actualización de estado del cliente si viene en el request
+    $clientName = trim($_GET['client_name'] ?? $_GET['client'] ?? $_POST['client_name'] ?? $_POST['client'] ?? '');
+    if (!empty($clientName)) {
+        $activeCount = isset($_GET['active']) ? (int)$_GET['active'] : (isset($_POST['active']) ? (int)$_POST['active'] : 0);
+        $waitingCount = isset($_GET['waiting']) ? (int)$_GET['waiting'] : (isset($_POST['waiting']) ? (int)$_POST['waiting'] : 0);
+
+        $upsertStmt = $db->prepare("
+            INSERT INTO clients_status (client_name, active_count, waiting_count, updated_at)
+            VALUES (:client_name, :active_count, :waiting_count, CURRENT_TIMESTAMP)
+            ON CONFLICT(client_name) DO UPDATE SET
+                active_count = excluded.active_count,
+                waiting_count = excluded.waiting_count,
+                updated_at = CURRENT_TIMESTAMP
+        ");
+        $upsertStmt->execute([
+            ':client_name' => $clientName,
+            ':active_count' => $activeCount,
+            ':waiting_count' => $waitingCount,
+        ]);
+    }
     
-    // Iniciar transacción atómica
+    // Iniciar transacción atómica para obtener trabajo de la cola
     $db->beginTransaction();
     
     // Obtener el primer registro más antiguo

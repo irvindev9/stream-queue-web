@@ -394,6 +394,30 @@
                     </table>
                 </div>
             </div>
+
+            <div class="queue-container" style="margin-top: 1rem;">
+                <div class="queue-header">
+                    <h2>Estado de Clientes</h2>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Activos</th>
+                                <th>En Espera</th>
+                                <th>Última Actualización</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clients-body">
+                            <tr>
+                                <td colspan="4" class="empty-state">Cargando estado de clientes...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -407,6 +431,7 @@
         const submitBtn = document.getElementById('submit-btn');
         const btnSpinner = document.getElementById('btn-spinner');
         const queueBody = document.getElementById('queue-body');
+        const clientsBody = document.getElementById('clients-body');
         const clearBtn = document.getElementById('clear-btn');
         const toast = document.getElementById('toast');
         const toastMessage = document.getElementById('toast-message');
@@ -431,12 +456,45 @@
                 
                 if (data.success) {
                     renderQueue(data.jobs);
+                    renderClients(data.clients);
                 } else {
                     console.error('Error fetching list:', data.error);
                 }
             } catch (err) {
                 console.error('Error contacting API:', err);
             }
+        }
+
+        function renderClients(clients) {
+            if (!clients || clients.length === 0) {
+                clientsBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="empty-state">No hay clientes registrados</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            clientsBody.innerHTML = clients.map(client => {
+                const date = new Date(client.updated_at + ' UTC');
+                const formattedDate = date.toLocaleString();
+                const activeBadge = client.active_count > 0 
+                    ? `<span class="badge badge-recording">${client.active_count} activo(s)</span>`
+                    : `<span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">0 activos</span>`;
+                
+                const waitingBadge = client.waiting_count > 0 
+                    ? `<span class="badge badge-pending">${client.waiting_count} en espera</span>`
+                    : `<span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">0 en espera</span>`;
+
+                return `
+                    <tr>
+                        <td style="font-weight: 600; color: #fff;">${escapeHtml(client.client_name)}</td>
+                        <td>${activeBadge}</td>
+                        <td>${waitingBadge}</td>
+                        <td class="date-cell">${formattedDate}</td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         function renderQueue(jobs) {

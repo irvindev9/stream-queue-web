@@ -30,6 +30,14 @@ try {
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
         CREATE INDEX IF NOT EXISTS idx_stream_queue_status ON stream_queue(status);
+
+        CREATE TABLE IF NOT EXISTS clients_status (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_name TEXT NOT NULL UNIQUE,
+            active_count INTEGER NOT NULL DEFAULT 0,
+            waiting_count INTEGER NOT NULL DEFAULT 0,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
     ");
 } catch (PDOException $e) {
     http_response_code(500);
@@ -41,11 +49,26 @@ $action = $_GET['action'] ?? '';
 
 switch ($action) {
     case 'list':
-        // Retrieve all jobs, newest first
+        // Retrieve all jobs and active clients status
         try {
             $stmt = $db->query("SELECT * FROM stream_queue ORDER BY id DESC LIMIT 100");
             $jobs = $stmt->fetchAll();
-            echo json_encode(['success' => true, 'jobs' => $jobs]);
+
+            $clientsStmt = $db->query("SELECT * FROM clients_status ORDER BY updated_at DESC");
+            $clients = $clientsStmt->fetchAll();
+
+            echo json_encode(['success' => true, 'jobs' => $jobs, 'clients' => $clients]);
+        } catch (PDOException $e) {
+            http_response_code(500);
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+        break;
+
+    case 'clients':
+        try {
+            $clientsStmt = $db->query("SELECT * FROM clients_status ORDER BY updated_at DESC");
+            $clients = $clientsStmt->fetchAll();
+            echo json_encode(['success' => true, 'clients' => $clients]);
         } catch (PDOException $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
