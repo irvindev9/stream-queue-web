@@ -344,6 +344,86 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Priority Styles */
+        .priority-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 0.5rem 0.8rem;
+        }
+
+        .priority-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .priority-group input[type="number"] {
+            width: 45px;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: inherit;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-align: center;
+            outline: none;
+        }
+
+        .priority-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.25rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .priority-1 {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+
+        .priority-2 {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+
+        .priority-3 {
+            background: rgba(156, 163, 175, 0.15);
+            color: #9ca3af;
+            border: 1px solid rgba(156, 163, 175, 0.3);
+        }
+
+        .priority-select {
+            appearance: none;
+            -webkit-appearance: none;
+            padding: 0.3rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            outline: none;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .priority-select:hover {
+            filter: brightness(1.2);
+        }
+
+        .priority-select option {
+            background: #111827;
+            color: #f3f4f6;
+        }
     </style>
 </head>
 <body>
@@ -388,7 +468,7 @@
                         </thead>
                         <tbody id="queue-body">
                             <tr>
-                                <td colspan="3" class="empty-state">Cargando cola...</td>
+                                <td colspan="4" class="empty-state">Cargando cola...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -428,6 +508,7 @@
     <script>
         const addForm = document.getElementById('add-form');
         const streamUrlInput = document.getElementById('stream-url');
+        const streamPriorityInput = document.getElementById('stream-priority');
         const submitBtn = document.getElementById('submit-btn');
         const btnSpinner = document.getElementById('btn-spinner');
         const queueBody = document.getElementById('queue-body');
@@ -501,7 +582,7 @@
             if (!jobs || jobs.length === 0) {
                 queueBody.innerHTML = `
                     <tr>
-                        <td colspan="3" class="empty-state">No hay transmisiones en cola</td>
+                        <td colspan="4" class="empty-state">No hay transmisiones en cola</td>
                     </tr>
                 `;
                 return;
@@ -568,7 +649,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ url })
+                    body: JSON.stringify({ url, priority: parseInt(streamPriorityInput.value, 10) || 3 })
                 });
                 
                 const data = await response.json();
@@ -587,6 +668,28 @@
                 btnSpinner.style.display = 'none';
             }
         });
+
+        
+        async function changePriority(id, priority) {
+            try {
+                const response = await fetch('api.php?action=set_priority', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ id, priority: parseInt(priority, 10) || 3 })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showToast('Prioridad actualizada');
+                    fetchQueue();
+                } else {
+                    showToast(data.error || 'Error al actualizar prioridad', true);
+                }
+            } catch (err) {
+                showToast('Error de conexión', true);
+            }
+        }
 
         clearBtn.addEventListener('click', async () => {
             if (!confirm('¿Seguro que deseas limpiar el historial de completados y errores?')) return;

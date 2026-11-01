@@ -3,3 +3,4 @@ queue.sqlite
 queue.sqlite-journal
 queue.sqlite-wal
 queue.sqlite-shm
+powershell.cmd

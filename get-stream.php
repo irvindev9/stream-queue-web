@@ -45,6 +45,10 @@ try {
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
+
+    try {
+        $db->exec("ALTER TABLE stream_queue ADD COLUMN priority INTEGER NOT NULL DEFAULT 3");
+    } catch (PDOException $e) {}
     // Asegurar existencia de tabla clients_status
     $db->exec("
         CREATE TABLE IF NOT EXISTS clients_status (
@@ -80,14 +84,16 @@ try {
     // Iniciar transacción atómica para obtener trabajo de la cola
     $db->beginTransaction();
     
-    // Obtener el primer registro más antiguo
-    $stmt = $db->query("SELECT id, url FROM stream_queue ORDER BY id ASC LIMIT 1");
+    // Obtener el primer registro con mayor prioridad (1 alta, 2 media, 3 baja)
+    $stmt = $db->query("SELECT id, url, priority FROM stream_queue ORDER BY priority ASC, id ASC LIMIT 1");
     $job = $stmt->fetch();
     
     $value = null;
+    $priority = 3;
     
     if ($job) {
         $value = $job['url'];
+        $priority = (int)($job['priority'] ?? 3);
         // Eliminar el registro
         $deleteStmt = $db->prepare("DELETE FROM stream_queue WHERE id = :id");
         $deleteStmt->execute([':id' => $job['id']]);
@@ -102,6 +108,7 @@ try {
     
     echo json_encode([
         'value' => $value,
+        'priority' => $priority,
         'remaining' => $remaining
     ]);
 

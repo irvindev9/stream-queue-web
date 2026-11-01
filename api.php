@@ -25,6 +25,7 @@ try {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             url TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending', -- pending, recording, completed, failed
+            priority INTEGER NOT NULL DEFAULT 3,
             error_message TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -51,7 +52,7 @@ switch ($action) {
     case 'list':
         // Retrieve all jobs and active clients status
         try {
-            $stmt = $db->query("SELECT * FROM stream_queue ORDER BY id DESC LIMIT 100");
+            $stmt = $db->query("SELECT * FROM stream_queue ORDER BY CASE WHEN status = 'pending' THEN 0 ELSE 1 END, CASE WHEN status = 'pending' THEN priority ELSE 99 END ASC, id DESC LIMIT 100");
             $jobs = $stmt->fetchAll();
 
             $clientsStmt = $db->query("SELECT * FROM clients_status ORDER BY updated_at DESC");
@@ -93,8 +94,11 @@ switch ($action) {
         }
 
         try {
-            $stmt = $db->prepare("INSERT INTO stream_queue (url, status) VALUES (:url, 'pending')");
-            $stmt->execute([':url' => $url]);
+            $priority = isset($input['priority']) ? (int)$input['priority'] : (isset($_POST['priority']) ? (int)$_POST['priority'] : 3);
+            if ($priority < 1 || $priority > 3) $priority = 3;
+
+            $stmt = $db->prepare("INSERT INTO stream_queue (url, status, priority) VALUES (:url, 'pending', :priority)");
+            $stmt->execute([':url' => $url, ':priority' => $priority]);
             $newId = $db->lastInsertId();
             
             echo json_encode([
@@ -103,7 +107,8 @@ switch ($action) {
                 'job' => [
                     'id' => $newId,
                     'url' => $url,
-                    'status' => 'pending'
+                    'status' => 'pending',
+                    'priority' => $priority
                 ]
             ]);
         } catch (PDOException $e) {
@@ -118,7 +123,7 @@ switch ($action) {
             $db->beginTransaction();
             
             // Find the oldest pending job
-            $stmt = $db->query("SELECT * FROM stream_queue WHERE status = 'pending' ORDER BY id ASC LIMIT 1");
+            $stmt = $db->query("SELECT * FROM stream_queue WHERE status = 'pending' ORDER BY priority ASC, id ASC LIMIT 1");
             $job = $stmt->fetch();
             
             if ($job) {
@@ -138,6 +143,33 @@ switch ($action) {
             if ($db->inTransaction()) {
                 $db->rollBack();
             }
+            http_response_code(500);
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+        break;
+
+    case 'set_priority':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['error' => 'Method not allowed. Use POST.']);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $id = $input['id'] ?? $_POST['id'] ?? null;
+        $priority = isset($input['priority']) ? (int)$input['priority'] : (isset($_POST['priority']) ? (int)$_POST['priority'] : 3);
+
+        if (!$id || $priority < 1) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Valid id and priority are required']);
+            exit;
+        }
+
+        try {
+            $stmt = $db->prepare("UPDATE stream_queue SET priority = :priority, updated_at = CURRENT_TIMESTAMP WHERE id = :id AND status = 'pending'");
+            $stmt->execute([':priority' => $priority, ':id' => $id]);
+            echo json_encode(['success' => true, 'message' => 'Priority updated successfully']);
+        } catch (PDOException $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
