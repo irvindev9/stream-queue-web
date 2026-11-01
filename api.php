@@ -166,7 +166,7 @@ switch ($action) {
         }
 
         try {
-            $stmt = $db->prepare("UPDATE stream_queue SET priority = :priority, updated_at = CURRENT_TIMESTAMP WHERE id = :id AND status = 'pending'");
+            $stmt = $db->prepare("UPDATE stream_queue SET priority = :priority, updated_at = CURRENT_TIMESTAMP WHERE id = :id AND status IN ('pending', 'recording')");
             $stmt->execute([':priority' => $priority, ':id' => $id]);
             echo json_encode(['success' => true, 'message' => 'Priority updated successfully']);
         } catch (PDOException $e) {

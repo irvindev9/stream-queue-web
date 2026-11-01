@@ -609,10 +609,25 @@
                 const errTooltip = job.error_message ? ` title="${escapeHtml(job.error_message)}"` : '';
                 const date = new Date(job.created_at + ' UTC');
                 const formattedDate = date.toLocaleString();
+                const p = job.priority ? parseInt(job.priority, 10) : 3;
+
+                let prioHtml = '';
+                if (job.status === 'pending' || job.status === 'recording') {
+                    prioHtml = `
+                        <select class="priority-select priority-${p}" onchange="changePriority(${job.id}, this.value)" title="Cambiar prioridad">
+                            <option value="1" ${p === 1 ? 'selected' : ''}>P1 · Alta</option>
+                            <option value="2" ${p === 2 ? 'selected' : ''}>P2 · Media</option>
+                            <option value="3" ${p === 3 ? 'selected' : ''}>P3 · Baja</option>
+                        </select>
+                    `;
+                } else {
+                    prioHtml = `<span class="priority-badge priority-${p}">P${p}</span>`;
+                }
 
                 return `
                     <tr>
                         <td class="url-cell" title="${escapeHtml(job.url)}">${escapeHtml(job.url)}</td>
+                        <td>${prioHtml}</td>
                         <td>
                             <span class="badge ${badgeClass}"${errTooltip}>
                                 ${statusLabel}
