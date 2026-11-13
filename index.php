@@ -557,6 +557,14 @@
             }
         }
 
+        function formatUtcDate(value) {
+            if (!value) return '-';
+            let iso = String(value).trim().replace(' ', 'T');
+            if (!/(Z|[+-]\d{2}:?\d{2})$/i.test(iso)) iso += 'Z';
+            const date = new Date(iso);
+            return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+        }
+
         function renderClients(clients) {
             if (!clients || clients.length === 0) {
                 clientsBody.innerHTML = `
@@ -568,8 +576,7 @@
             }
 
             clientsBody.innerHTML = clients.map(client => {
-                const date = new Date(client.updated_at + ' UTC');
-                const formattedDate = date.toLocaleString();
+                const formattedDate = formatUtcDate(client.updated_at);
                 const activeBadge = client.active_count > 0 
                     ? `<span class="badge badge-recording">${client.active_count} activo(s)</span>`
                     : `<span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">0 activos</span>`;
@@ -618,8 +625,7 @@
                 }
 
                 const errTooltip = job.error_message ? ` title="${escapeHtml(job.error_message)}"` : '';
-                const date = new Date(job.created_at + ' UTC');
-                const formattedDate = date.toLocaleString();
+                const formattedDate = formatUtcDate(job.created_at);
                 const p = job.priority ? parseInt(job.priority, 10) : 3;
 
                 let prioHtml = '';
