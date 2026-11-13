@@ -445,6 +445,17 @@
                         required
                     >
                 </div>
+                <div class="priority-group" title="Prioridad (1 = Alta, 2 = Media, 3 = Baja)">
+                    <label for="stream-priority">P</label>
+                    <input
+                        type="number"
+                        id="stream-priority"
+                        name="priority"
+                        min="1"
+                        max="3"
+                        value="3"
+                    >
+                </div>
                 <button type="submit" id="submit-btn">
                     <span class="spinner" id="btn-spinner"></span>
                     <span>Agregar a la Cola</span>
@@ -664,7 +675,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ url, priority: parseInt(streamPriorityInput.value, 10) || 3 })
+                    body: JSON.stringify({ url, priority: streamPriorityInput ? (parseInt(streamPriorityInput.value, 10) || 3) : 3 })
                 });
                 
                 const data = await response.json();
