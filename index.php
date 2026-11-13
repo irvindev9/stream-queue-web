@@ -403,26 +403,63 @@
             border: 1px solid rgba(156, 163, 175, 0.3);
         }
 
-        .priority-select {
-            appearance: none;
-            -webkit-appearance: none;
-            padding: 0.3rem 0.65rem;
+        .priority-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.2rem;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .priority-toggle .priority-btn {
+            padding: 0.25rem 0.55rem;
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid transparent;
             border-radius: 6px;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             font-weight: 700;
-            cursor: pointer;
-            outline: none;
-            font-family: inherit;
-            transition: all 0.2s ease;
+            box-shadow: none;
+            transform: none;
+            transition: all 0.15s ease;
         }
 
-        .priority-select:hover {
-            filter: brightness(1.2);
+        .priority-toggle .priority-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            transform: none;
+            box-shadow: none;
         }
 
-        .priority-select option {
-            background: #111827;
-            color: #f3f4f6;
+        .priority-toggle .priority-btn.active.priority-1 {
+            background: rgba(239, 68, 68, 0.25);
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        .priority-toggle .priority-btn.active.priority-2 {
+            background: rgba(245, 158, 11, 0.25);
+            color: #fbbf24;
+            border-color: rgba(245, 158, 11, 0.5);
+        }
+
+        .priority-toggle .priority-btn.active.priority-3 {
+            background: rgba(156, 163, 175, 0.22);
+            color: #e5e7eb;
+            border-color: rgba(156, 163, 175, 0.45);
+        }
+
+        .priority-toggle--form {
+            padding: 0.35rem;
+            border-radius: 12px;
+        }
+
+        .priority-toggle--form .priority-btn {
+            padding: 0.65rem 0.9rem;
+            font-size: 0.85rem;
+            border-radius: 8px;
         }
     </style>
 </head>
@@ -445,16 +482,11 @@
                         required
                     >
                 </div>
-                <div class="priority-group" title="Prioridad (1 = Alta, 2 = Media, 3 = Baja)">
-                    <label for="stream-priority">P</label>
-                    <input
-                        type="number"
-                        id="stream-priority"
-                        name="priority"
-                        min="1"
-                        max="3"
-                        value="3"
-                    >
+                <input type="hidden" id="stream-priority" name="priority" value="3">
+                <div class="priority-toggle priority-toggle--form" id="form-priority-toggle" role="group" aria-label="Prioridad del stream" title="Prioridad (1 = Alta, 2 = Media, 3 = Baja)">
+                    <button type="button" class="priority-btn" data-priority="1" onclick="setFormPriority(1)">P1</button>
+                    <button type="button" class="priority-btn" data-priority="2" onclick="setFormPriority(2)">P2</button>
+                    <button type="button" class="priority-btn active priority-3" data-priority="3" onclick="setFormPriority(3)">P3</button>
                 </div>
                 <button type="submit" id="submit-btn">
                     <span class="spinner" id="btn-spinner"></span>
@@ -631,11 +663,11 @@
                 let prioHtml = '';
                 if (job.status === 'pending' || job.status === 'recording') {
                     prioHtml = `
-                        <select class="priority-select priority-${p}" onchange="changePriority(${job.id}, this.value)" title="Cambiar prioridad">
-                            <option value="1" ${p === 1 ? 'selected' : ''}>P1 · Alta</option>
-                            <option value="2" ${p === 2 ? 'selected' : ''}>P2 · Media</option>
-                            <option value="3" ${p === 3 ? 'selected' : ''}>P3 · Baja</option>
-                        </select>
+                        <div class="priority-toggle" role="group" aria-label="Cambiar prioridad">
+                            <button type="button" class="priority-btn ${p === 1 ? 'active priority-1' : ''}" onclick="changePriority(${job.id}, 1)" title="Prioridad Alta">P1</button>
+                            <button type="button" class="priority-btn ${p === 2 ? 'active priority-2' : ''}" onclick="changePriority(${job.id}, 2)" title="Prioridad Media">P2</button>
+                            <button type="button" class="priority-btn ${p === 3 ? 'active priority-3' : ''}" onclick="changePriority(${job.id}, 3)" title="Prioridad Baja">P3</button>
+                        </div>
                     `;
                 } else {
                     prioHtml = `<span class="priority-badge priority-${p}">P${p}</span>`;
@@ -702,6 +734,18 @@
         });
 
         
+        function setFormPriority(value) {
+            const p = parseInt(value, 10) || 3;
+            if (streamPriorityInput) streamPriorityInput.value = p;
+            document.querySelectorAll('#form-priority-toggle .priority-btn').forEach(btn => {
+                const btnP = parseInt(btn.dataset.priority, 10);
+                btn.classList.remove('active', 'priority-1', 'priority-2', 'priority-3');
+                if (btnP === p) {
+                    btn.classList.add('active', `priority-${p}`);
+                }
+            });
+        }
+
         async function changePriority(id, priority) {
             try {
                 const response = await fetch('api.php?action=set_priority', {
